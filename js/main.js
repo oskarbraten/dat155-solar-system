@@ -1,6 +1,6 @@
 
 import MouseLookController from './MouseLookController.js';
-import { Renderer, Scene, Node, Mesh, Primitives, BasicMaterial, CubeMapMaterial, PerspectiveCamera, vec3, vec4 } from '../lib/engine/index.js';
+import { Renderer, Scene, Node, Mesh, Primitives, BasicMaterial, CubeMapMaterial, PerspectiveCamera, vec3 } from '../lib/engine/index.js';
 
 // Create a Renderer and append the canvas element to the DOM.
 let renderer = new Renderer(window.innerWidth, window.innerHeight);
@@ -9,46 +9,29 @@ document.body.appendChild(renderer.domElement);
 // Create a Scene.
 const scene = new Scene();
 
-const basicMaterial1 = new BasicMaterial({
-    color: vec4.fromValues(1.0, 0.5, 0.5, 1.0)
+const sunMaterial = new BasicMaterial({
+    map: renderer.loadTexture('resources/sun.jpg')
 });
 
-const basicMaterial2 = new BasicMaterial({
-    color: vec4.fromValues(0.5, 1.0, 0.5, 1.0)
+const earthMaterial = new BasicMaterial({
+    map: renderer.loadTexture('resources/earth_daymap.jpg')
 });
 
-const basicMaterial3 = new BasicMaterial({
-    color: vec4.fromValues(0.5, 0.5, 1.0, 1.0)
-});
+// Get more textures here:
+// https://www.solarsystemscope.com/textures/
 
-// Create a box primitive with the helper function create box.
-const boxPrimitive1 = Primitives.createBox(basicMaterial1);
-const boxPrimitive2 = Primitives.createBox(basicMaterial2);
-const boxPrimitive3 = Primitives.createBox(basicMaterial3);
+const sunPrimitive = Primitives.createSphere(sunMaterial, 32, 32);
 
-// Create a Mesh representing a cube in the scene.
-const cube1 = new Mesh([boxPrimitive1]);
-cube1.setTranslation(-2, 0, 0);
-scene.add(cube1);
+const sun = new Mesh([sunPrimitive]);
+scene.add(sun);
 
-const cube2 = new Mesh([boxPrimitive2]);
-cube2.setTranslation(0, 0, 0);
-scene.add(cube2);
+const earthPrimitive = Primitives.from(sunPrimitive, earthMaterial);
 
-const cube3 = new Mesh([boxPrimitive3]);
-cube3.setTranslation(2, 0, 0);
-scene.add(cube3);
+const earth = new Mesh([earthPrimitive]);
 
-const sphereMaterial = new BasicMaterial({
-    color: vec4.fromValues(1.0, 1.0, 1.0, 1.0)
-});
-
-let spherePrimitive = Primitives.createSphere(sphereMaterial, 12, 12, 1, false, 3);
-
-const sphere = new Mesh([spherePrimitive]);
-sphere.setTranslation(0, 2, 0);
-
-scene.add(sphere);
+earth.setScale(0.1, 0.1, 0.1);
+earth.setTranslation(1.25, 0, 0);
+scene.add(earth);
 
 
 // We create a Node representing movement, in order to decouple camera rotation.
@@ -76,8 +59,7 @@ player.add(skyBox);
 
 // We create a PerspectiveCamera with a fovy of 70, aspectRatio, and near and far clipping plane.
 const camera = new PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
-camera.setTranslation(0, 4, 8);
-camera.setRotationFromEuler(-30, 0, 0);
+camera.setTranslation(0, 0, 12);
 
 player.add(camera);
 scene.add(player);
@@ -125,7 +107,7 @@ let move = {
     backward: false,
     left: false,
     right: false,
-    speed: 0.005
+    speed: 0.1
 };
 
 window.addEventListener('keydown', (e) => {
@@ -156,13 +138,16 @@ window.addEventListener('keyup', (e) => {
 
 // We create a vec3 to hold the players velocity (this way we avoid allocating a new one every frame).
 const velocity = vec3.fromValues(0.0, 0.0, 0.0);
+
+const TICK_RATE = 1000 / 60; // 60 fps is the reference Hz.
+
 let then = 0;
 function loop(now) {
 
     let delta = now - then;
     then = now;
 
-    const moveSpeed = move.speed * delta;
+    const moveSpeed = move.speed * (delta / TICK_RATE);
 
     // Reduce accumulated velocity by 25% each frame.
     vec3.scale(velocity, velocity, 0.75);
@@ -192,10 +177,7 @@ function loop(now) {
     const translation = vec3.transformQuat(vec3.create(), velocity, camera.rotation);
     player.applyTranslation(...translation);
 
-    // Animate cubes:
-    cube1.rotateY(0.002 * delta);
-    cube2.rotateX(0.002 * delta);
-    cube3.rotation = camera.rotation; // This cube gets the same rotation as the camera.
+    // Animate bodies:
 
     // Reset mouse movement accumulator every frame.
     yaw = 0;
