@@ -39,6 +39,18 @@ const cube3 = new Mesh([boxPrimitive3]);
 cube3.setTranslation(2, 0, 0);
 scene.add(cube3);
 
+const sphereMaterial = new BasicMaterial({
+    color: vec4.fromValues(1.0, 1.0, 1.0, 1.0)
+});
+
+let spherePrimitive = Primitives.createSphere(sphereMaterial, 12, 12, 1, false, 3);
+
+const sphere = new Mesh([spherePrimitive]);
+sphere.setTranslation(0, 2, 0);
+
+scene.add(sphere);
+
+
 // We create a Node representing movement, in order to decouple camera rotation.
 // We do this so that the skybox follows the movement, but not the rotation of the camera.
 const player = new Node();
