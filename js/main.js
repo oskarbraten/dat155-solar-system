@@ -12,11 +12,11 @@ let time = 0.001;
 const scene = new Scene();
 
 const sunMaterial = new BasicMaterial({
-    map: renderer.loadTexture('resources/8k_sun.jpg')
+    map: renderer.loadTexture('resources/sun.jpg')
 });
 
 const earthMaterial = new BasicMaterial({
-    map: renderer.loadTexture('resources/8k_earth_daymap.jpg')
+    map: renderer.loadTexture('resources/earth_daymap.jpg')
 });
 
 // Get more textures here:
