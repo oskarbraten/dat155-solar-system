@@ -1,37 +1,49 @@
 
 import MouseLookController from './MouseLookController.js';
-import { Renderer, Scene, Node, Mesh, Primitives, BasicMaterial, CubeMapMaterial, PerspectiveCamera, vec3 } from '../lib/engine/index.js';
+import { Renderer, Scene, Node, Mesh, Primitive, BasicMaterial, CubeMapMaterial, PerspectiveCamera, vec3 } from '../lib/engine/index.js';
 
 // Create a Renderer and append the canvas element to the DOM.
 let renderer = new Renderer(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+let time = 0.001;
+
 // Create a Scene.
 const scene = new Scene();
 
 const sunMaterial = new BasicMaterial({
-    map: renderer.loadTexture('resources/sun.jpg')
+    map: renderer.loadTexture('resources/8k_sun.jpg')
 });
 
 const earthMaterial = new BasicMaterial({
-    map: renderer.loadTexture('resources/earth_daymap.jpg')
+    map: renderer.loadTexture('resources/8k_earth_daymap.jpg')
 });
 
 // Get more textures here:
 // https://www.solarsystemscope.com/textures/
 
-const sunPrimitive = Primitives.createSphere(sunMaterial, 32, 32);
+// Get relative sizes here:
+// http://www.exploratorium.edu/ronh/solar_system/
+// You dont have to use these, as the planets may be too tiny to be visible.
+
+const sunPrimitive = Primitive.createSphere(sunMaterial, 32, 32);
 
 const sun = new Mesh([sunPrimitive]);
 scene.add(sun);
 
-const earthPrimitive = Primitives.from(sunPrimitive, earthMaterial);
+const earthPrimitive = Primitive.from(sunPrimitive, earthMaterial);
+
+const earthBaseRotationNode = new Node(scene);
+const earthCenterNode = new Node(earthBaseRotationNode);
+
+earthCenterNode.setTranslation(11.45, 0, 0);
 
 const earth = new Mesh([earthPrimitive]);
+earthCenterNode.add(earth);
 
-earth.setScale(0.1, 0.1, 0.1);
-earth.setTranslation(1.25, 0, 0);
-scene.add(earth);
+
+// True scale: earth.setScale(0.0091, 0.0091, 0.0091);
+earth.setScale(0.091, 0.091, 0.091); // 10 times larger than irl
 
 
 // We create a Node representing movement, in order to decouple camera rotation.
@@ -49,7 +61,7 @@ let skyBoxMaterial = new CubeMapMaterial({
     ])
 });
 
-let skyBoxPrimitive = Primitives.createBox(skyBoxMaterial, true); // Second argument tells the createBox function to invert the faces and normals of the box.
+let skyBoxPrimitive = Primitive.createCube(skyBoxMaterial, true); // Second argument tells the createBox function to invert the faces and normals of the box.
 
 let skyBox = new Mesh([skyBoxPrimitive]);
 skyBox.setScale(1500, 1500, 1500);
@@ -59,9 +71,10 @@ player.add(skyBox);
 
 // We create a PerspectiveCamera with a fovy of 70, aspectRatio, and near and far clipping plane.
 const camera = new PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
-camera.setTranslation(0, 0, 12);
+camera.setTranslation(0, 0, 5);
 
 player.add(camera);
+
 scene.add(player);
 
 // We need to update some properties in the camera and renderer if the window is resized.
@@ -107,7 +120,7 @@ let move = {
     backward: false,
     left: false,
     right: false,
-    speed: 0.1
+    speed: 0.05
 };
 
 window.addEventListener('keydown', (e) => {
@@ -120,6 +133,10 @@ window.addEventListener('keydown', (e) => {
         move.left = true;
     } else if (e.code === 'KeyD') {
         move.right = true;
+    } else if (e.code === 'ArrowUp') {
+        time = Math.min(time * 1.05, 10);
+    } else if (e.code === 'ArrowDown') {
+        time = Math.max(0.000001, time * 0.95);
     }
 });
 
@@ -147,7 +164,9 @@ function loop(now) {
     let delta = now - then;
     then = now;
 
-    const moveSpeed = move.speed * (delta / TICK_RATE);
+    const deltaCorrection = (delta / TICK_RATE); // The deviation factor from the targeted TICK_RATE of 60 Hz
+
+    const moveSpeed = move.speed * deltaCorrection;
 
     // Reduce accumulated velocity by 25% each frame.
     vec3.scale(velocity, velocity, 0.75);
@@ -178,6 +197,11 @@ function loop(now) {
     player.applyTranslation(...translation);
 
     // Animate bodies:
+    const baseRotation = time * deltaCorrection; // The amount the earth rotates about the sun every tick.
+    earthBaseRotationNode.rotateY(baseRotation);
+    
+    earth.rotateY(baseRotation * 365); // The Earth rotates approx. 365 times per year.
+    sun.rotateY(baseRotation * 25); // The Sun rotates approx. 25 times per year.
 
     // Reset mouse movement accumulator every frame.
     yaw = 0;
