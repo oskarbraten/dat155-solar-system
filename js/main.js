@@ -8,9 +8,10 @@ document.body.appendChild(renderer.domElement);
 
 let time = 0.001;
 
-// Create a Scene.
+// A scenegraph consists of a top-level Node, called Scene and an arbitrary number of nodes forming a DAG.
 const scene = new Scene();
 
+// We load some textures and instantiate materials from them:
 const sunMaterial = new BasicMaterial({
     map: renderer.loadTexture('resources/sun.jpg')
 });
@@ -26,21 +27,41 @@ const earthMaterial = new BasicMaterial({
 // http://www.exploratorium.edu/ronh/solar_system/
 // You dont have to use these, as the planets may be too tiny to be visible.
 
+// A Primitive consists of geometry and a material.
+// We create a sphere Primitive using the static method 'createSphere'.
+// The generated geometry is called a UV-sphere and it has 32 vertical and horizontal subdivisions (latitude and longitude).
+// Additionally, we specify that we want the Primitive to be drawn with sunMaterial.
 const sunPrimitive = Primitive.createSphere(sunMaterial, 32, 32);
 
+// A Primitive is only drawn as part of a Mesh,
+// so we instantiate a new Mesh with the sunPrimitive.
+// (A Mesh can consist of multiple Primitives. )
 const sun = new Mesh([sunPrimitive]);
+
+// Finally, we add the sun to our scene.
+// Only meshes that have been added to our scene, either as a child or as a descendant, will be drawn.
 scene.add(sun);
 
+// We also want to draw the earth, so we use the static method 'from' to create a new Primitive based on the previous one.
+// Using this function ensures that we're reusing the same buffers for geometry, while allowing us to specify a different material.
 const earthPrimitive = Primitive.from(sunPrimitive, earthMaterial);
 
-const earthBaseRotationNode = new Node(scene);
-const earthCenterNode = new Node(earthBaseRotationNode);
+// Next we create a Node that represents the Earths orbit.
+// This node is not translated at all, because we want it to be centered inside the sun.
+// It is however rotated in the update-loop at starting at line 215.
+const earthOrbitNode = new Node(scene);
 
+// This node represents the center of the earth.
+const earthCenterNode = new Node(earthOrbitNode);
+// We translate it along the x-axis to a suitable position.
+// When the earthOrbitNode is rotated, this node will orbit about the center of the sun.
 earthCenterNode.setTranslation(11.45, 0, 0);
 
+// Create a new Mesh for the Earth.
 const earth = new Mesh([earthPrimitive]);
-earthCenterNode.add(earth);
 
+// We add it to the earthCenterNode, so that it orbits around the sun.
+earthCenterNode.add(earth);
 
 // True scale: earth.setScale(0.0091, 0.0091, 0.0091);
 earth.setScale(0.091, 0.091, 0.091); // 10 times larger than irl
@@ -197,11 +218,11 @@ function loop(now) {
     player.applyTranslation(...translation);
 
     // Animate bodies:
-    const baseRotation = time * deltaCorrection; // The amount the earth rotates about the sun every tick.
-    earthBaseRotationNode.rotateY(baseRotation);
+    const orbitalRotationFactor = time * deltaCorrection; // The amount the earth rotates about the sun every tick.
+    earthOrbitNode.rotateY(orbitalRotationFactor);
     
-    earth.rotateY(baseRotation * 365); // The Earth rotates approx. 365 times per year.
-    sun.rotateY(baseRotation * 25); // The Sun rotates approx. 25 times per year.
+    earth.rotateY(orbitalRotationFactor * 365); // The Earth rotates approx. 365 times per year.
+    sun.rotateY(orbitalRotationFactor * 25); // The Sun rotates approx. 25 times per year.
 
     // Reset mouse movement accumulator every frame.
     yaw = 0;
